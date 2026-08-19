@@ -2474,7 +2474,21 @@ impl IrisTools {
                 };
                 ConnectionState::from_iris(c, source, file)
             }
-            None => ConnectionState::new_disconnected(ConnectionSource::EnvVars),
+            None => {
+                let (source, file) = if config_path.is_some() {
+                    (ConnectionSource::ConfigFile, config_path)
+                } else if std::env::var("IRIS_HOST").is_ok() {
+                    (ConnectionSource::EnvVars, None)
+                } else {
+                    (ConnectionSource::EnvVars, None)
+                };
+                let mut state = ConnectionState::new_disconnected(source);
+                state.config_file = file;
+                if let Ok(v) = std::env::var("IRIS_WRITE_TOOLS_ENABLED") {
+                    state.write_tools_enabled = v == "1" || v.eq_ignore_ascii_case("true");
+                }
+                state
+            }
         };
 
         let log_max = std::env::var("IRIS_LOG_STORE_MAX")
